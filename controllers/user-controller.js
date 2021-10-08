@@ -32,7 +32,7 @@ const signIn = async (req, res, next) => {
   }
 
   if (!foundUser) {
-    return next(new HttpError("Cannot Sign In. Bad credentials."), 404);
+    return next(new HttpError("Cannot Sign In. Invalid credentials."), 403);
   }
 
   let isValidPassword = false;
@@ -48,33 +48,27 @@ const signIn = async (req, res, next) => {
   }
 
   if (!isValidPassword) {
-    return next(new HttpError("Cannot Sign In. Bad credentials."), 404);
+    return next(new HttpError("Cannot Sign In. Invalid credentials."), 403);
   }
 
   let token;
   try {
     token = jwt.sign(
       {
-        userId: foundUser.id,
+        uid: foundUser.id,
         email: foundUser.email,
       },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
   } catch (error) {
-    return next(new HttpError("Error while signing in, please try again", 404));
+    return next(new HttpError("Error while signing in, please try again", 500));
   }
 
   res.json({
     user: {
       id: foundUser.id,
       email: foundUser.email,
-      firstName: foundUser.firstName,
-      lastName: foundUser.lastName,
-      preferredLanguageCode: foundUser.preferredLanguageCode,
-      isEmailConfirmed: foundUser.isEmailConfirmed,
-      timeZoneId: foundUser.timeZoneId,
-      uniqueLinkId: foundUser.uniqueLinkId,
       token: token,
     },
   });
@@ -120,7 +114,7 @@ const signUp = async (req, res, next) => {
     existingTimeZone = await TimeZone.findById(timeZoneId);
   } catch (error) {
     return next(
-      new HttpError("There was an error while finding a Time Zone.", 404)
+      new HttpError("There was an error while finding a Time Zone.", 500)
     );
   }
 
@@ -167,7 +161,7 @@ const signUp = async (req, res, next) => {
     await newUser.save();
   } catch (error) {
     return next(
-      new HttpError("Error while signing up, please try again.", 404)
+      new HttpError("Error while signing up, please try again.", 500)
     );
   }
 
@@ -175,26 +169,20 @@ const signUp = async (req, res, next) => {
   try {
     token = jwt.sign(
       {
-        userId: newUser.id,
+        uid: newUser.id,
         email: newUser.email,
       },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
   } catch (error) {
-    return next(new HttpError("Error while signing up, please try again", 404));
+    return next(new HttpError("Error while signing up, please try again", 500));
   }
 
   res.status(201).json({
     user: {
       id: newUser.id,
       email: newUser.email,
-      firstName: newUser.firstName,
-      lastName: newUser.lastName,
-      preferredLanguageCode: newUser.preferredLanguageCode,
-      isEmailConfirmed: newUser.isEmailConfirmed,
-      timeZoneId: newUser.timeZoneId,
-      uniqueLinkId: newUser.uniqueLinkId,
       token: token,
     },
   });
@@ -230,7 +218,52 @@ const getUserById = async (req, res, next) => {
     return next(new HttpError("Could not find a user with the given id.", 404));
   }
 
-  res.json({ user: foundUser.toObject({ getters: true }) });
+  res.json({
+    user: {
+      id: foundUser.id,
+      email: foundUser.email,
+      firstName: foundUser.firstName,
+      lastName: foundUser.lastName,
+      preferredLanguageCode: foundUser.preferredLanguageCode,
+      isEmailConfirmed: foundUser.isEmailConfirmed,
+      timeZoneId: foundUser.timeZoneId,
+      uniqueLinkId: foundUser.uniqueLinkId,
+    },
+  });
+};
+
+const getAuthUser = async (req, res, next) => {
+  const userId = req.userData.uid;
+
+  if (!userId) {
+    return next(new HttpError("Authentication Failed.", 403));
+  }
+
+  let foundUser;
+  try {
+    foundUser = await User.findById(userId);
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while trying to find a user.", 500)
+    );
+  }
+
+  if (!foundUser) {
+    return next(new HttpError("Could not find a user with the given id.", 404));
+  }
+
+  res.json({
+    user: {
+      id: foundUser.id,
+      email: foundUser.email,
+      firstName: foundUser.firstName,
+      lastName: foundUser.lastName,
+      preferredLanguageCode: foundUser.preferredLanguageCode,
+      isEmailConfirmed: foundUser.isEmailConfirmed,
+      timeZoneId: foundUser.timeZoneId,
+      uniqueLinkId: foundUser.uniqueLinkId,
+    },
+  });
 };
 
 const getUserByLinkId = async (req, res, next) => {
@@ -262,12 +295,25 @@ const updateUser = (req, res, next) => {
   res.status(200).json({ user: req.body });
 };
 
+const updateUniqueLinkId = async (req, res, next) => {
+  const newLink = req.params.newLink;
+
+  //TODO: validate if link is unique, otherwise, sent an error
+
+  const userId = req.userData.uid;
+  // TODO: find user with the id from the token and update the unique link id
+
+  next();
+};
+
 const deleteUser = (req, res, next) => {};
 
 exports.signIn = signIn;
 exports.getAllUsers = getAllUsers;
 exports.getUserById = getUserById;
+exports.getAuthUser = getAuthUser;
 exports.gettUserByLinkId = getUserByLinkId;
 exports.signUp = signUp;
 exports.updateUser = updateUser;
+exports.updateUniqueLinkId = updateUniqueLinkId;
 exports.deleteUser = deleteUser;
