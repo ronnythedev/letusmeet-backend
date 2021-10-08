@@ -8,6 +8,7 @@
     ```
 
 3.  Update the `.env` file with the environment variables.
+
     3.1. Set the port where the backend server will run
 
     ```
