@@ -12,7 +12,7 @@
     3.1. Set the port where the backend server will run
 
     ```
-    API_PORT=5000
+    PORT=5000
     ```
 
     3.2. The connection string to the mongo cluster and database
