@@ -1,6 +1,9 @@
 ## 👉 Get Started
 
+0.  Download and install [Nodejs](https://nodejs.org/en/download/) in your computer (LTS version).
+
 1.  Open the folder's project in VisualStudio Code and open the terminal.
+
 2.  Install dependencies. How? Run the following in the terminal:
 
     ```
