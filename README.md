@@ -10,7 +10,7 @@
     npm install
     ```
 
-3.  Update the `.env` file with the environment variables.
+3.  Create a file named `.env` in the root of the project. Update it with the environment variables. You can review `.env.example` file as a referece. IMPORTANT: DO NOT CHANGE `.env.example` OR COMMIT IT TO SOURCE CONTROL, THIS IS JUST A REFERENCE FILE.
 
     3.1. Set the port where the backend server will run
 
