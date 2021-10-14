@@ -33,7 +33,7 @@
 4.  Finally, run the server executing the following in the terminal:
 
     ```
-    npm start
+    npm run start-dev
     ```
 
 5.  Now the API should be running and listening requests in the port configured in the `.env` file.
