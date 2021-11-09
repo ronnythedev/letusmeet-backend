@@ -35,9 +35,9 @@ router.get("/available-dates", userController.getAvailableDates);
 
 router.get("/all", userController.getAllUsers); // this route might also need some sort of special role
 
-router.get("/link/:lid", userController.gettUserByLinkId);
+router.get("/link/:lid", userController.getUserByLinkId);
 
-router.patch("/link/:newlink", userController.updateUniqueLinkId);
+router.patch("/updatelink", userController.updateUniqueLinkId);
 
 router.patch("/:uid", userController.updateUser);
 

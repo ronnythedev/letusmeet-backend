@@ -326,14 +326,50 @@ const updateUser = (req, res, next) => {
 };
 
 const updateUniqueLinkId = async (req, res, next) => {
-  const newLink = req.params.newLink;
-
-  //TODO: validate if link is unique, otherwise, sent an error
-
+  const newLink = req.body.newLink;
   const userId = req.userData.uid;
-  // TODO: find user with the id from the token and update the unique link id
 
-  next();
+  let foundUser;
+  try {
+    foundUser = await User.find({ uniqueLinkId: newLink });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to find a user by link.",
+        500
+      )
+    );
+  }
+
+  if (foundUser.length <= 0) {
+    try {
+      const filter = { _id: userId };
+      const update = { uniqueLinkId: newLink };
+      let updatedUser = await User.findOneAndUpdate(filter, update, {
+        returnOriginal: false,
+      });
+      res.status(200).json({ user: updatedUser });
+    } catch (error) {
+      return next(
+        new HttpError(
+          "There was an error while trying to find a user by id.",
+          500
+        )
+      );
+    }
+  } else if (foundUser.length === 1) {
+    if (foundUser[0].id === userId) {
+      res.status(200).json({ user: foundUser[0] }); // if it's the same user, is not necessary to save
+    } else {
+      return next(
+        new HttpError("The given link is being used by another user.", 500)
+      );
+    }
+  } else {
+    return next(
+      new HttpError("The given link is being used by another user", 500)
+    );
+  }
 };
 
 const deleteUser = (req, res, next) => {};
@@ -342,7 +378,7 @@ exports.signIn = signIn;
 exports.getAllUsers = getAllUsers;
 exports.getUserById = getUserById;
 exports.getAuthUser = getAuthUser;
-exports.gettUserByLinkId = getUserByLinkId;
+exports.getUserByLinkId = getUserByLinkId;
 exports.signUp = signUp;
 exports.updateUser = updateUser;
 exports.updateUniqueLinkId = updateUniqueLinkId;
