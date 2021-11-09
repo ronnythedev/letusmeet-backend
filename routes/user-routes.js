@@ -31,6 +31,8 @@ router.post(
 // ALL ROUTES BELOW THIS MIDDLEWARE WILL NEED AUTHENTICATION
 router.use(checkAuth);
 
+router.get("/available-dates", userController.getAvailableDates);
+
 router.get("/all", userController.getAllUsers); // this route might also need some sort of special role
 
 router.get("/link/:lid", userController.gettUserByLinkId);

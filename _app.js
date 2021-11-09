@@ -8,7 +8,6 @@ const HttpError = require("./models/http-error");
 const authRoutes = require("./routes/auth-routes");
 const userRoutes = require("./routes/user-routes");
 const timeZoneRoutes = require("./routes/timeZone-routes");
-const userScheduleRoutes = require("./routes/user-schedule-routes");
 const meetingRoutes = require("./routes/meeting-routes");
 const meetingRoomRoutes = require("./routes/meeting-room-routes");
 
@@ -35,7 +34,6 @@ app.use((req, res, next) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/timezone", timeZoneRoutes);
-app.use("/api/userSchedule", userScheduleRoutes);
 app.use("/api/meeting", meetingRoutes);
 app.use("/api/meetingRoom", meetingRoomRoutes);
 

@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 
 // models
 const User = require("../models/user");
+const UserSchedule = require("../models/user-schedule");
 const TimeZone = require("../models/timeZone");
 const HttpError = require("../models/http-error");
 
@@ -188,6 +189,35 @@ const signUp = async (req, res, next) => {
   });
 };
 
+const getAvailableDates = async (req, res, next) => {
+  const userId = req.userData.uid;
+
+  if (!userId) {
+    return next(new HttpError("Authentication Failed.", 403));
+  }
+
+  let availableDates;
+  try {
+    availableDates = await UserSchedule.find({ userId: userId }).sort({
+      weekDay: 1,
+      toTime: 1,
+    });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to get available dates by user.",
+        500
+      )
+    );
+  }
+
+  res.json({
+    availableDates: availableDates.map((date) =>
+      date.toObject({ getters: true })
+    ),
+  });
+};
+
 const getAllUsers = async (req, res, next) => {
   let listOfUsers;
 
@@ -317,3 +347,4 @@ exports.signUp = signUp;
 exports.updateUser = updateUser;
 exports.updateUniqueLinkId = updateUniqueLinkId;
 exports.deleteUser = deleteUser;
+exports.getAvailableDates = getAvailableDates;
