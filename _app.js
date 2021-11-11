@@ -46,6 +46,7 @@ io.on("connection", (socket) => {
   socket.on("join room", (roomID) => {
     if (users[roomID]) {
       const length = users[roomID].length;
+
       if (length === 2) {
         socket.emit("room full");
         return;
@@ -55,6 +56,7 @@ io.on("connection", (socket) => {
       users[roomID] = [socket.id];
     }
     socketToRoom[socket.id] = roomID;
+
     const usersInThisRoom = users[roomID].filter((id) => id !== socket.id);
 
     socket.emit("all users", usersInThisRoom);
