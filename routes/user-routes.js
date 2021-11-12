@@ -28,10 +28,14 @@ router.post(
   userController.signUp
 );
 
+//*****
+//*****
 // ALL ROUTES BELOW THIS MIDDLEWARE WILL NEED AUTHENTICATION
 router.use(checkAuth);
 
 router.get("/available-dates", userController.getAvailableDates);
+
+router.patch("/update-dates", userController.updateAvailableDatesByUser);
 
 router.get("/all", userController.getAllUsers); // this route might also need some sort of special role
 

@@ -189,35 +189,6 @@ const signUp = async (req, res, next) => {
   });
 };
 
-const getAvailableDates = async (req, res, next) => {
-  const userId = req.userData.uid;
-
-  if (!userId) {
-    return next(new HttpError("Authentication Failed.", 403));
-  }
-
-  let availableDates;
-  try {
-    availableDates = await UserSchedule.find({ userId: userId }).sort({
-      weekDay: 1,
-      toTime: 1,
-    });
-  } catch (error) {
-    return next(
-      new HttpError(
-        "There was an error while trying to get available dates by user.",
-        500
-      )
-    );
-  }
-
-  res.json({
-    availableDates: availableDates.map((date) =>
-      date.toObject({ getters: true })
-    ),
-  });
-};
-
 const getAllUsers = async (req, res, next) => {
   let listOfUsers;
 
@@ -317,14 +288,6 @@ const getUserByLinkId = async (req, res, next) => {
   res.json({ user: foundUser.map((user) => user.toObject({ getters: true })) });
 };
 
-const updateUser = (req, res, next) => {
-  const { name, lastName } = req.body;
-
-  // TODO: perform the update
-
-  res.status(200).json({ user: req.body });
-};
-
 const updateUniqueLinkId = async (req, res, next) => {
   const newLink = req.body.newLink;
   const userId = req.userData.uid;
@@ -372,7 +335,114 @@ const updateUniqueLinkId = async (req, res, next) => {
   }
 };
 
+// METHODS RELEATED TO USER' SCHEDULE
+const getAvailableDates = async (req, res, next) => {
+  const userId = req.userData.uid;
+
+  if (!userId) {
+    return next(new HttpError("Authentication Failed.", 403));
+  }
+
+  let availableDates;
+  try {
+    availableDates = await UserSchedule.find({ userId: userId }).sort({
+      weekDay: 1,
+      toTime: 1,
+    });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to get available dates by user.",
+        500
+      )
+    );
+  }
+
+  res.json({
+    availableDates: availableDates.map((date) =>
+      date.toObject({ getters: true })
+    ),
+  });
+};
+
+const updateAvailableDatesByUser = async (req, res, next) => {
+  const userId = req.userData.uid;
+  const newDates = req.body.newDates;
+
+  if (!userId) {
+    return next(new HttpError("Authentication Failed.", 403));
+  }
+
+  // remove all available dates by user
+  const filter = { userId: userId };
+  try {
+    await UserSchedule.deleteMany(filter);
+  } catch (error) {
+    return next(
+      new HttpError(
+        "Error while removing user schedules, please try again.",
+        500
+      )
+    );
+  }
+
+  // add the new list of available dates
+  await Promise.all(
+    newDates.map(async (date) => {
+      let values = date.split("-");
+      const newSchedule = new UserSchedule({
+        weekDay: parseInt(values[0]),
+        fromTime: parseInt(values[1]),
+        toTime: parseInt(values[2]),
+        userId: userId,
+      });
+
+      try {
+        await newSchedule.save();
+      } catch (error) {
+        return next(
+          new HttpError(
+            "Error while saving user schedule entry, please try again.",
+            500
+          )
+        );
+      }
+    })
+  );
+
+  // return the new list of available dates
+  let availableDates;
+  try {
+    availableDates = await UserSchedule.find({ userId: userId }).sort({
+      weekDay: 1,
+      toTime: 1,
+    });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to get available dates by user.",
+        500
+      )
+    );
+  }
+
+  res.json({
+    availableDates: availableDates.map((date) =>
+      date.toObject({ getters: true })
+    ),
+  });
+};
+
+// NOT  IMPLEMENTED YET
 const deleteUser = (req, res, next) => {};
+
+const updateUser = (req, res, next) => {
+  const { name, lastName } = req.body;
+
+  // TODO: perform the update
+
+  res.status(200).json({ user: req.body });
+};
 
 exports.signIn = signIn;
 exports.getAllUsers = getAllUsers;
@@ -384,3 +454,4 @@ exports.updateUser = updateUser;
 exports.updateUniqueLinkId = updateUniqueLinkId;
 exports.deleteUser = deleteUser;
 exports.getAvailableDates = getAvailableDates;
+exports.updateAvailableDatesByUser = updateAvailableDatesByUser;
