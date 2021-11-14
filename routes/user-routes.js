@@ -28,6 +28,8 @@ router.post(
   userController.signUp
 );
 
+router.get("/link/:lid/:fromDateTs", userController.getUserByLinkId);
+
 //*****
 //*****
 // ALL ROUTES BELOW THIS MIDDLEWARE WILL NEED AUTHENTICATION
@@ -38,8 +40,6 @@ router.get("/available-dates", userController.getAvailableDates);
 router.patch("/update-dates", userController.updateAvailableDatesByUser);
 
 router.get("/all", userController.getAllUsers); // this route might also need some sort of special role
-
-router.get("/link/:lid", userController.getUserByLinkId);
 
 router.patch("/updatelink", userController.updateUniqueLinkId);
 

@@ -2,12 +2,18 @@
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const shortid = require("shortid");
 
 // models
 const User = require("../models/user");
 const UserSchedule = require("../models/user-schedule");
+const Meeting = require("../models/meeting");
 const TimeZone = require("../models/timeZone");
 const HttpError = require("../models/http-error");
+
+const { startOfWeek } = require("date-fns");
+
+//import { format, startOfWeek, add, getDate, compareAsc } from "date-fns";
 
 const signIn = async (req, res, next) => {
   const errors = validationResult(req);
@@ -151,12 +157,8 @@ const signUp = async (req, res, next) => {
     timeZoneId,
     createdDateTs: new Date().getTime(),
     countryCode,
+    uniqueLinkId: shortid.generate(),
   });
-
-  newUser.uniqueLinkId = newUser.id.substring(
-    newUser.id.length - 7,
-    newUser.id.length
-  );
 
   try {
     await newUser.save();
@@ -269,10 +271,12 @@ const getAuthUser = async (req, res, next) => {
 
 const getUserByLinkId = async (req, res, next) => {
   const lid = req.params.lid;
+  let fromDateTs = req.params.fromDateTs;
 
+  // USER INFO
   let foundUser;
   try {
-    foundUser = await User.find({ uniqueLinkId: lid });
+    foundUser = await User.findOne({ uniqueLinkId: lid });
   } catch (error) {
     return next(
       new HttpError("There was an error while trying to find a user.", 500)
@@ -285,7 +289,60 @@ const getUserByLinkId = async (req, res, next) => {
     );
   }
 
-  res.json({ user: foundUser.map((user) => user.toObject({ getters: true })) });
+  // AVAILABLE DATES BY USER
+  let availableDates;
+  try {
+    availableDates = await UserSchedule.find({ userId: foundUser.id }).sort({
+      weekDay: 1,
+      toTime: 1,
+    });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to get available dates by user.",
+        500
+      )
+    );
+  }
+
+  // UPCOMING MEETINGS
+  if (fromDateTs == undefined) {
+    // if fromDate is not provided, then it will default to the first date of the current week
+    fromDateTs = new Date(startOfWeek(new Date())).getTime();
+  }
+
+  let upcomingMeetings;
+  try {
+    upcomingMeetings = await Meeting.find(
+      {
+        organizerId: foundUser.id,
+        startDateTs: { $gt: fromDateTs },
+        status: { $in: ["pending", "confirmed"] },
+      },
+      "startDateTs endDateTs fromTime toTime"
+    ).sort({ startDateTs: 1 });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to get upcoming meetings by user.",
+        500
+      )
+    );
+  }
+
+  res.json({
+    user: {
+      id: foundUser.id,
+      firstName: foundUser.firstName,
+      lastName: foundUser.lastName,
+    },
+    availableDates: availableDates.map((date) =>
+      date.toObject({ getters: true })
+    ),
+    upcomingMeetings: upcomingMeetings.map((meeting) =>
+      meeting.toObject({ getters: true })
+    ),
+  });
 };
 
 const updateUniqueLinkId = async (req, res, next) => {
