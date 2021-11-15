@@ -35,6 +35,8 @@ router.get("/link/:lid/:fromDateTs", userController.getUserByLinkId);
 // ALL ROUTES BELOW THIS MIDDLEWARE WILL NEED AUTHENTICATION
 router.use(checkAuth);
 
+router.post("/insert-meeting-request", userController.insertMeetingRequest);
+
 router.get("/available-dates", userController.getAvailableDates);
 
 router.patch("/update-dates", userController.updateAvailableDatesByUser);

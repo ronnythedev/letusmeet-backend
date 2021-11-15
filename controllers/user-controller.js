@@ -269,82 +269,6 @@ const getAuthUser = async (req, res, next) => {
   });
 };
 
-const getUserByLinkId = async (req, res, next) => {
-  const lid = req.params.lid;
-  let fromDateTs = req.params.fromDateTs;
-
-  // USER INFO
-  let foundUser;
-  try {
-    foundUser = await User.findOne({ uniqueLinkId: lid });
-  } catch (error) {
-    return next(
-      new HttpError("There was an error while trying to find a user.", 500)
-    );
-  }
-
-  if (foundUser.length <= 0) {
-    return next(
-      new HttpError("Could not find a user with the given link id.", 404)
-    );
-  }
-
-  // AVAILABLE DATES BY USER
-  let availableDates;
-  try {
-    availableDates = await UserSchedule.find({ userId: foundUser.id }).sort({
-      weekDay: 1,
-      toTime: 1,
-    });
-  } catch (error) {
-    return next(
-      new HttpError(
-        "There was an error while trying to get available dates by user.",
-        500
-      )
-    );
-  }
-
-  // UPCOMING MEETINGS
-  if (fromDateTs == undefined) {
-    // if fromDate is not provided, then it will default to the first date of the current week
-    fromDateTs = new Date(startOfWeek(new Date())).getTime();
-  }
-
-  let upcomingMeetings;
-  try {
-    upcomingMeetings = await Meeting.find(
-      {
-        organizerId: foundUser.id,
-        startDateTs: { $gt: fromDateTs },
-        status: { $in: ["pending", "confirmed"] },
-      },
-      "startDateTs endDateTs fromTime toTime"
-    ).sort({ startDateTs: 1 });
-  } catch (error) {
-    return next(
-      new HttpError(
-        "There was an error while trying to get upcoming meetings by user.",
-        500
-      )
-    );
-  }
-
-  res.json({
-    user: {
-      id: foundUser.id,
-      firstName: foundUser.firstName,
-      lastName: foundUser.lastName,
-    },
-    availableDates: availableDates.map((date) =>
-      date.toObject({ getters: true })
-    ),
-    upcomingMeetings: upcomingMeetings.map((meeting) =>
-      meeting.toObject({ getters: true })
-    ),
-  });
-};
-
 const updateUniqueLinkId = async (req, res, next) => {
   const newLink = req.body.newLink;
   const userId = req.userData.uid;
@@ -490,6 +414,121 @@ const updateAvailableDatesByUser = async (req, res, next) => {
   });
 };
 
+// METHODS RELATED TO MEETINGS
+const getUserByLinkId = async (req, res, next) => {
+  const lid = req.params.lid;
+  let fromDateTs = req.params.fromDateTs;
+
+  // USER INFO
+  let foundUser;
+  try {
+    foundUser = await User.findOne({ uniqueLinkId: lid });
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while trying to find a user.", 500)
+    );
+  }
+
+  if (foundUser.length <= 0) {
+    return next(
+      new HttpError("Could not find a user with the given link id.", 404)
+    );
+  }
+
+  // AVAILABLE DATES BY USER
+  let availableDates;
+  try {
+    availableDates = await UserSchedule.find({ userId: foundUser.id }).sort({
+      weekDay: 1,
+      toTime: 1,
+    });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to get available dates by user.",
+        500
+      )
+    );
+  }
+
+  // UPCOMING MEETINGS
+  if (fromDateTs == undefined) {
+    // if fromDate is not provided, then it will default to the first date of the current week
+    fromDateTs = new Date(startOfWeek(new Date())).getTime();
+  }
+
+  let upcomingMeetings;
+  try {
+    upcomingMeetings = await Meeting.find(
+      {
+        organizerId: foundUser.id,
+        startDateTs: { $gt: fromDateTs },
+        status: { $in: ["pending", "confirmed"] },
+      },
+      "startDateTs endDateTs fromTime toTime"
+    ).sort({ startDateTs: 1 });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to get upcoming meetings by user.",
+        500
+      )
+    );
+  }
+
+  res.json({
+    user: {
+      id: foundUser.id,
+      firstName: foundUser.firstName,
+      lastName: foundUser.lastName,
+      email: foundUser.email,
+    },
+    availableDates: availableDates.map((date) =>
+      date.toObject({ getters: true })
+    ),
+    upcomingMeetings: upcomingMeetings.map((meeting) =>
+      meeting.toObject({ getters: true })
+    ),
+  });
+};
+
+const insertMeetingRequest = async (req, res, next) => {
+  const attendeeId = req.userData.uid; // the attendee will be the user making the request
+  const { userToId, startDateTs, fromTime, toTime, subject, optionalNotes } =
+    req.body;
+
+  if (!attendeeId) {
+    return next(new HttpError("Authentication Failed.", 403));
+  }
+
+  const newMeeting = new Meeting({
+    status: "pending",
+    startDateTs: startDateTs,
+    endDateTs: startDateTs,
+    fromTime: fromTime,
+    toTime: toTime,
+    subject: subject,
+    notes: optionalNotes,
+    organizerId: userToId,
+    attendeeId: attendeeId,
+    roomId: shortid.generate(),
+    roomPin: String(Math.floor(1000 + Math.random() * 9000)),
+  });
+
+  try {
+    await newMeeting.save();
+  } catch (error) {
+    return next(
+      new HttpError(
+        "Error while saving meeting request. Please try again.",
+        500
+      )
+    );
+  }
+
+  res.status(200).json({ meeting: newMeeting.toObject({ getters: true }) });
+};
+
 // NOT  IMPLEMENTED YET
 const deleteUser = (req, res, next) => {};
 
@@ -512,3 +551,4 @@ exports.updateUniqueLinkId = updateUniqueLinkId;
 exports.deleteUser = deleteUser;
 exports.getAvailableDates = getAvailableDates;
 exports.updateAvailableDatesByUser = updateAvailableDatesByUser;
+exports.insertMeetingRequest = insertMeetingRequest;
