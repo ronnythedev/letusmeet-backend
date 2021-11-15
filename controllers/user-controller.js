@@ -590,6 +590,32 @@ const getUpcomingConfirmedMeetings = async (req, res, next) => {
   });
 };
 
+const validateMeetingRoomPin = async (req, res, next) => {
+  const { roomId, roomPin } = req.params;
+
+  let foundMeeting;
+  try {
+    foundMeeting = await Meeting.findOne({ roomId: roomId });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to find a room with the given Id.",
+        500
+      )
+    );
+  }
+
+  if (foundMeeting === null || foundMeeting.length <= 0) {
+    return next(new HttpError("Could not find a Room with the given Id.", 404));
+  }
+
+  if (String(foundMeeting.roomPin) === String(roomPin)) {
+    res.status(200).json({ roomPinValid: true });
+  } else {
+    return next(new HttpError("Entered Room PIN is invalid.", 404));
+  }
+};
+
 // NOT  IMPLEMENTED YET
 const deleteUser = (req, res, next) => {};
 
@@ -614,3 +640,4 @@ exports.getAvailableDates = getAvailableDates;
 exports.updateAvailableDatesByUser = updateAvailableDatesByUser;
 exports.insertMeetingRequest = insertMeetingRequest;
 exports.getUpcomingConfirmedMeetings = getUpcomingConfirmedMeetings;
+exports.validateMeetingRoomPin = validateMeetingRoomPin;

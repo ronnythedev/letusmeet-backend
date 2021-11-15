@@ -43,6 +43,11 @@ router.get("/upcoming-meetings", userController.getUpcomingConfirmedMeetings);
 
 router.patch("/update-dates", userController.updateAvailableDatesByUser);
 
+router.get(
+  "/validate-room-pin/:roomId/:roomPin",
+  userController.validateMeetingRoomPin
+);
+
 router.get("/all", userController.getAllUsers); // this route might also need some sort of special role
 
 router.patch("/updatelink", userController.updateUniqueLinkId);
