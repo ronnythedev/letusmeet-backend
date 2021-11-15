@@ -529,6 +529,70 @@ const insertMeetingRequest = async (req, res, next) => {
   res.status(200).json({ meeting: newMeeting.toObject({ getters: true }) });
 };
 
+const getUpcomingConfirmedMeetings = async (req, res, next) => {
+  const userId = req.userData.uid;
+  let fromDateTs = new Date(startOfWeek(new Date())).getTime();
+
+  if (!userId) {
+    return next(new HttpError("Authentication Failed.", 403));
+  }
+
+  let upcomingMeetings;
+  try {
+    upcomingMeetings = await Meeting.find(
+      {
+        $or: [{ organizerId: userId }, { attendeeId: userId }],
+        startDateTs: { $gt: fromDateTs },
+        status: "pending", //TODO: Eventually this WILL be only "confirmed" meetings.
+      },
+      "startDateTs endDateTs fromTime toTime subject notes organizerId attendeeId roomId roomPin"
+    ).sort({ startDateTs: 1 });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to get upcoming meetings by user.",
+        500
+      )
+    );
+  }
+
+  const newUpcomingMeetings = await Promise.all(
+    upcomingMeetings.map(async (meeting) => {
+      let organizer = await User.findById(
+        meeting.organizerId,
+        "id firstName lastName email"
+      );
+      let attendee = await User.findById(
+        meeting.attendeeId,
+        "id firstName lastName email"
+      );
+
+      return {
+        id: meeting.id,
+        startDateTs: meeting.startDateTs,
+        endDateTs: meeting.endDateTs,
+        fromTime: meeting.fromTime,
+        toTime: meeting.toTime,
+        subject: meeting.subject,
+        notes: meeting.notes,
+        roomId: meeting.roomId,
+        roomPin: meeting.roomPin,
+        organizerId: meeting.organizerId,
+        attendee: meeting.attendeeId,
+        organizer: organizer,
+        attendee: attendee,
+      };
+    })
+  );
+
+  res.json({
+    upcomingMeetings: newUpcomingMeetings,
+    // upcomingMeetings: newUpcomingMeetings.map((meeting) =>
+    //   meeting.toObject({ getters: true })
+    // ),
+  });
+};
+
 // NOT  IMPLEMENTED YET
 const deleteUser = (req, res, next) => {};
 
@@ -552,3 +616,4 @@ exports.deleteUser = deleteUser;
 exports.getAvailableDates = getAvailableDates;
 exports.updateAvailableDatesByUser = updateAvailableDatesByUser;
 exports.insertMeetingRequest = insertMeetingRequest;
+exports.getUpcomingConfirmedMeetings = getUpcomingConfirmedMeetings;
