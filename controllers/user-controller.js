@@ -72,7 +72,7 @@ const signIn = async (req, res, next) => {
     return next(new HttpError("Error while signing in, please try again", 500));
   }
 
-  res.json({
+  res.status(200).json({
     user: {
       id: foundUser.id,
       email: foundUser.email,
@@ -200,7 +200,7 @@ const getAllUsers = async (req, res, next) => {
     return next(new HttpError("Error while retrieving users.", 404));
   }
 
-  res.json({
+  res.status(200).json({
     users: listOfUsers.map((user) => user.toObject({ getters: true })),
   });
 };
@@ -221,7 +221,7 @@ const getUserById = async (req, res, next) => {
     return next(new HttpError("Could not find a user with the given id.", 404));
   }
 
-  res.json({
+  res.status(200).json({
     user: {
       id: foundUser.id,
       email: foundUser.email,
@@ -255,7 +255,7 @@ const getAuthUser = async (req, res, next) => {
     return next(new HttpError("Could not find a user with the given id.", 404));
   }
 
-  res.json({
+  res.status(200).json({
     user: {
       id: foundUser.id,
       email: foundUser.email,
@@ -339,7 +339,7 @@ const getAvailableDates = async (req, res, next) => {
     );
   }
 
-  res.json({
+  res.status(200).json({
     availableDates: availableDates.map((date) =>
       date.toObject({ getters: true })
     ),
@@ -407,7 +407,7 @@ const updateAvailableDatesByUser = async (req, res, next) => {
     );
   }
 
-  res.json({
+  res.status(200).json({
     availableDates: availableDates.map((date) =>
       date.toObject({ getters: true })
     ),
@@ -476,7 +476,7 @@ const getUserByLinkId = async (req, res, next) => {
     );
   }
 
-  res.json({
+  res.status(200).json({
     user: {
       id: foundUser.id,
       firstName: foundUser.firstName,
@@ -585,11 +585,8 @@ const getUpcomingConfirmedMeetings = async (req, res, next) => {
     })
   );
 
-  res.json({
+  res.status(200).json({
     upcomingMeetings: newUpcomingMeetings,
-    // upcomingMeetings: newUpcomingMeetings.map((meeting) =>
-    //   meeting.toObject({ getters: true })
-    // ),
   });
 };
 
