@@ -694,6 +694,23 @@ const confirmMeeting = async (req, res, next) => {
   }
 };
 
+const declineMeeting = async (req, res, next) => {
+  const { meetingId } = req.body;
+
+  try {
+    const filter = { _id: meetingId };
+    const update = { status: "declined" };
+    let updatedMeeting = await Meeting.findOneAndUpdate(filter, update, {
+      returnOriginal: false,
+    });
+    res.status(200).json({ meeting: updatedMeeting });
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while trying to confirm meeting.", 500)
+    );
+  }
+};
+
 // NOT  IMPLEMENTED YET
 const deleteUser = (req, res, next) => {};
 
@@ -721,3 +738,4 @@ exports.getUpcomingConfirmedMeetings = getUpcomingConfirmedMeetings;
 exports.getUpcomingPendingMeetings = getUpcomingPendingMeetings;
 exports.validateMeetingRoomPin = validateMeetingRoomPin;
 exports.confirmMeeting = confirmMeeting;
+exports.declineMeeting = declineMeeting;

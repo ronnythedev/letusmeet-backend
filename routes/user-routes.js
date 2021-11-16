@@ -48,6 +48,8 @@ router.get(
 
 router.patch("/confirm-meeting", userController.confirmMeeting);
 
+router.patch("/decline-meeting", userController.declineMeeting);
+
 router.patch("/update-dates", userController.updateAvailableDatesByUser);
 
 router.get(
