@@ -41,6 +41,13 @@ router.get("/available-dates", userController.getAvailableDates);
 
 router.get("/upcoming-meetings", userController.getUpcomingConfirmedMeetings);
 
+router.get(
+  "/upcoming-pending-meetings",
+  userController.getUpcomingPendingMeetings
+);
+
+router.patch("/confirm-meeting", userController.confirmMeeting);
+
 router.patch("/update-dates", userController.updateAvailableDatesByUser);
 
 router.get(

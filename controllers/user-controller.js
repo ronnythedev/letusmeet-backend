@@ -543,7 +543,68 @@ const getUpcomingConfirmedMeetings = async (req, res, next) => {
       {
         $or: [{ organizerId: userId }, { attendeeId: userId }],
         startDateTs: { $gt: fromDateTs },
-        status: "pending", //TODO: Eventually this WILL be only "confirmed" meetings.
+        status: "confirmed",
+      },
+      "startDateTs endDateTs fromTime toTime subject notes organizerId attendeeId roomId roomPin"
+    ).sort({ startDateTs: 1 });
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to get upcoming meetings by user.",
+        500
+      )
+    );
+  }
+
+  const newUpcomingMeetings = await Promise.all(
+    upcomingMeetings.map(async (meeting) => {
+      let organizer = await User.findById(
+        meeting.organizerId,
+        "id firstName lastName email"
+      );
+      let attendee = await User.findById(
+        meeting.attendeeId,
+        "id firstName lastName email"
+      );
+
+      return {
+        id: meeting.id,
+        startDateTs: meeting.startDateTs,
+        endDateTs: meeting.endDateTs,
+        fromTime: meeting.fromTime,
+        toTime: meeting.toTime,
+        subject: meeting.subject,
+        notes: meeting.notes,
+        roomId: meeting.roomId,
+        roomPin: meeting.roomPin,
+        organizerId: meeting.organizerId,
+        attendee: meeting.attendeeId,
+        organizer: organizer,
+        attendee: attendee,
+      };
+    })
+  );
+
+  res.status(200).json({
+    upcomingMeetings: newUpcomingMeetings,
+  });
+};
+
+const getUpcomingPendingMeetings = async (req, res, next) => {
+  const userId = req.userData.uid;
+  let fromDateTs = new Date(startOfWeek(new Date())).getTime();
+
+  if (!userId) {
+    return next(new HttpError("Authentication Failed.", 403));
+  }
+
+  let upcomingMeetings;
+  try {
+    upcomingMeetings = await Meeting.find(
+      {
+        $or: [{ organizerId: userId }, { attendeeId: userId }],
+        startDateTs: { $gt: fromDateTs },
+        status: "pending",
       },
       "startDateTs endDateTs fromTime toTime subject notes organizerId attendeeId roomId roomPin"
     ).sort({ startDateTs: 1 });
@@ -616,6 +677,23 @@ const validateMeetingRoomPin = async (req, res, next) => {
   }
 };
 
+const confirmMeeting = async (req, res, next) => {
+  const { meetingId } = req.body;
+
+  try {
+    const filter = { _id: meetingId };
+    const update = { status: "confirmed" };
+    let updatedMeeting = await Meeting.findOneAndUpdate(filter, update, {
+      returnOriginal: false,
+    });
+    res.status(200).json({ meeting: updatedMeeting });
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while trying to confirm meeting.", 500)
+    );
+  }
+};
+
 // NOT  IMPLEMENTED YET
 const deleteUser = (req, res, next) => {};
 
@@ -640,4 +718,6 @@ exports.getAvailableDates = getAvailableDates;
 exports.updateAvailableDatesByUser = updateAvailableDatesByUser;
 exports.insertMeetingRequest = insertMeetingRequest;
 exports.getUpcomingConfirmedMeetings = getUpcomingConfirmedMeetings;
+exports.getUpcomingPendingMeetings = getUpcomingPendingMeetings;
 exports.validateMeetingRoomPin = validateMeetingRoomPin;
+exports.confirmMeeting = confirmMeeting;
