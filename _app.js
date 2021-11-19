@@ -48,13 +48,16 @@ io.on("connection", (socket) => {
       const length = users[roomID].length;
 
       if (length === 2) {
+        delete users[roomID]; // room is spoiled, then remove it and recreate it
+        users[roomID] = [socket.id];
         socket.emit("room full");
-        return;
+      } else {
+        users[roomID].push(socket.id);
       }
-      users[roomID].push(socket.id);
     } else {
       users[roomID] = [socket.id];
     }
+
     socketToRoom[socket.id] = roomID;
 
     const usersInThisRoom = users[roomID].filter((id) => id !== socket.id);
@@ -76,13 +79,18 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("disconnect", () => {
+  socket.on("gonnaleave", () => {
     const roomID = socketToRoom[socket.id];
     let room = users[roomID];
+
     if (room) {
       room = room.filter((id) => id !== socket.id);
       users[roomID] = room;
     }
+
+    io.to(users[roomID]).emit("user left", users[roomID]);
+
+    delete users[roomID];
   });
 });
 

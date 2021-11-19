@@ -531,7 +531,7 @@ const insertMeetingRequest = async (req, res, next) => {
 
 const getUpcomingConfirmedMeetings = async (req, res, next) => {
   const userId = req.userData.uid;
-  let fromDateTs = new Date(startOfWeek(new Date())).getTime();
+  let fromDateTs = new Date().getTime();
 
   if (!userId) {
     return next(new HttpError("Authentication Failed.", 403));
