@@ -549,7 +549,7 @@ const insertMeetingRequest = async (req, res, next) => {
     );
   }
 
-  let title = "A recibido una Solicitud de Reunión";
+  let title = "Ha recibido una Solicitud de Reunión";
   let paragraph1 = `${attendeeUser.firstName} ${
     attendeeUser.lastName
   } ha solicitado una reunión con usted para el día ${format(
@@ -560,12 +560,7 @@ const insertMeetingRequest = async (req, res, next) => {
   let anchor = `<a href='${process.env.APP_URL}'>${process.env.APP_URL_NAME}</a>`;
   let emailBody = `<html><body><h3>${title}</h3><p><span>${paragraph1}</span></p><p><span>${paragraph2}</span></p><p>${anchor}</p></body></html>`;
 
-  let wasEmailSent = await sendEmail(
-    process.env.FROM_EMAIL,
-    organizerUser.email,
-    title,
-    emailBody
-  );
+  let wasEmailSent = await sendEmail(organizerUser.email, title, emailBody);
 
   res.status(200).json({
     meeting: newMeeting.toObject({ getters: true }),
@@ -730,7 +725,45 @@ const confirmMeeting = async (req, res, next) => {
     let updatedMeeting = await Meeting.findOneAndUpdate(filter, update, {
       returnOriginal: false,
     });
-    res.status(200).json({ meeting: updatedMeeting });
+
+    let attendeeUser;
+    try {
+      attendeeUser = await User.findById(updatedMeeting.attendeeId);
+    } catch (error) {
+      return next(
+        new HttpError(
+          "There was an error while trying to find attendee user.",
+          500
+        )
+      );
+    }
+
+    let organizerUser;
+    try {
+      organizerUser = await User.findById(updatedMeeting.organizerId);
+    } catch (error) {
+      return next(
+        new HttpError(
+          "There was an error while trying to find organizer user.",
+          500
+        )
+      );
+    }
+
+    let title = "¡Reunión Confirmada!";
+    let paragraph1 = `Su reunión con ${organizerUser.firstName} ${
+      organizerUser.lastName
+    } para el día ${format(
+      parseInt(updatedMeeting.startDateTs),
+      "dd/MMMM/yyyy"
+    )} ha sido confirmada.`;
+    let paragraph2 = `Por favor ingrese a la sección de <b>Próximas Reuniones</b> de ${process.env.APP_NAME} para ver los detalles de ingreso.`;
+    let anchor = `<a href='${process.env.APP_URL}'>${process.env.APP_URL_NAME}</a>`;
+    let emailBody = `<html><body><h3>${title}</h3><p><span>${paragraph1}</span></p><p><span>${paragraph2}</span></p><p>${anchor}</p></body></html>`;
+
+    let wasEmailSent = await sendEmail(attendeeUser.email, title, emailBody);
+
+    res.status(200).json({ meeting: updatedMeeting, emailSent: wasEmailSent });
   } catch (error) {
     return next(
       new HttpError("There was an error while trying to confirm meeting.", 500)
@@ -747,7 +780,45 @@ const declineMeeting = async (req, res, next) => {
     let updatedMeeting = await Meeting.findOneAndUpdate(filter, update, {
       returnOriginal: false,
     });
-    res.status(200).json({ meeting: updatedMeeting });
+
+    let attendeeUser;
+    try {
+      attendeeUser = await User.findById(updatedMeeting.attendeeId);
+    } catch (error) {
+      return next(
+        new HttpError(
+          "There was an error while trying to find attendee user.",
+          500
+        )
+      );
+    }
+
+    let organizerUser;
+    try {
+      organizerUser = await User.findById(updatedMeeting.organizerId);
+    } catch (error) {
+      return next(
+        new HttpError(
+          "There was an error while trying to find organizer user.",
+          500
+        )
+      );
+    }
+
+    let title = "Reunión Declinada";
+    let paragraph1 = `Su solicitud de reunión con ${organizerUser.firstName} ${
+      organizerUser.lastName
+    } para el día ${format(
+      parseInt(updatedMeeting.startDateTs),
+      "dd/MMMM/yyyy"
+    )} fue declinada.`;
+    let paragraph2 = `Por favor ingrese a la sección de <b>Próximas Reuniones</b> de ${process.env.APP_NAME} si desea más detalles.`;
+    let anchor = `<a href='${process.env.APP_URL}'>${process.env.APP_URL_NAME}</a>`;
+    let emailBody = `<html><body><h3>${title}</h3><p><span>${paragraph1}</span></p><p><span>${paragraph2}</span></p><p>${anchor}</p></body></html>`;
+
+    let wasEmailSent = await sendEmail(attendeeUser.email, title, emailBody);
+
+    res.status(200).json({ meeting: updatedMeeting, emailSent: wasEmailSent });
   } catch (error) {
     return next(
       new HttpError("There was an error while trying to confirm meeting.", 500)
@@ -755,20 +826,90 @@ const declineMeeting = async (req, res, next) => {
   }
 };
 
-const sendEmail = async (fromMail, toMail, subject, bodyInHtml) => {
-  let transporter = nodemailer.createTransport({
-    host: process.env.SMTP_Host,
-    port: process.env.SMTP_Port,
-    secure: process.env.SMTP_IsSecure,
-    auth: {
-      user: process.env.SMTP_Username,
-      pass: process.env.SMTP_Password,
-    },
-  });
+const cancelMeeting = async (req, res, next) => {
+  const { meetingId } = req.body;
+
+  try {
+    const filter = { _id: meetingId };
+    const update = { status: "canceled" };
+    let updatedMeeting = await Meeting.findOneAndUpdate(filter, update, {
+      returnOriginal: false,
+    });
+
+    let attendeeUser;
+    try {
+      attendeeUser = await User.findById(updatedMeeting.attendeeId);
+    } catch (error) {
+      return next(
+        new HttpError(
+          "There was an error while trying to find attendee user.",
+          500
+        )
+      );
+    }
+
+    let organizerUser;
+    try {
+      organizerUser = await User.findById(updatedMeeting.organizerId);
+    } catch (error) {
+      return next(
+        new HttpError(
+          "There was an error while trying to find organizer user.",
+          500
+        )
+      );
+    }
+
+    let title = "Reunión Cancelada";
+    let paragraph1 = `${attendeeUser.firstName} ${
+      attendeeUser.lastName
+    } canceló la solicitud de reunión del día ${format(
+      parseInt(updatedMeeting.startDateTs),
+      "dd/MMMM/yyyy"
+    )}.`;
+    let paragraph2 = `El horario de esta reunión en su calendario ya fue liberado. No se requieren más acciones de su parte.`;
+    let anchor = `<a href='${process.env.APP_URL}'>${process.env.APP_URL_NAME}</a>`;
+    let emailBody = `<html><body><h3>${title}</h3><p><span>${paragraph1}</span></p><p><span>${paragraph2}</span></p><p>${anchor}</p></body></html>`;
+
+    let wasEmailSent = await sendEmail(organizerUser.email, title, emailBody);
+
+    res.status(200).json({ meeting: updatedMeeting, emailSent: wasEmailSent });
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while trying to confirm meeting.", 500)
+    );
+  }
+};
+
+const sendEmail = async (toMail, subject, bodyInHtml) => {
+  let fromEmail;
+
+  let transporter;
+  if (process.env.EMAIL_METHOD === "SMTP") {
+    fromEmail = process.env.SMTP_FromEmail;
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_Host,
+      port: process.env.SMTP_Port,
+      secure: process.env.SMTP_IsSecure,
+      auth: {
+        user: process.env.SMTP_Username,
+        pass: process.env.SMTP_Password,
+      },
+    });
+  } else if (process.env.EMAIL_METHOD === "service") {
+    fromEmail = process.env.EMAIL_Username;
+    transporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE,
+      auth: {
+        user: process.env.EMAIL_Username,
+        pass: process.env.EMAIL_Password,
+      },
+    });
+  }
 
   try {
     let info = await transporter.sendMail({
-      from: fromMail,
+      from: fromEmail,
       to: toMail,
       subject: subject,
       html: bodyInHtml,
@@ -810,3 +951,4 @@ exports.getUpcomingPendingMeetings = getUpcomingPendingMeetings;
 exports.validateMeetingRoomPin = validateMeetingRoomPin;
 exports.confirmMeeting = confirmMeeting;
 exports.declineMeeting = declineMeeting;
+exports.cancelMeeting = cancelMeeting;
