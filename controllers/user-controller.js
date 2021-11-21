@@ -3,6 +3,7 @@ const { validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const shortid = require("shortid");
+const nodemailer = require("nodemailer");
 
 // models
 const User = require("../models/user");
@@ -11,9 +12,7 @@ const Meeting = require("../models/meeting");
 const TimeZone = require("../models/timeZone");
 const HttpError = require("../models/http-error");
 
-const { startOfWeek } = require("date-fns");
-
-//import { format, startOfWeek, add, getDate, compareAsc } from "date-fns";
+const { startOfWeek, format } = require("date-fns");
 
 const signIn = async (req, res, next) => {
   const errors = validationResult(req);
@@ -501,6 +500,30 @@ const insertMeetingRequest = async (req, res, next) => {
     return next(new HttpError("Authentication Failed.", 403));
   }
 
+  let attendeeUser;
+  try {
+    attendeeUser = await User.findById(attendeeId);
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to find attendee user.",
+        500
+      )
+    );
+  }
+
+  let organizerUser;
+  try {
+    organizerUser = await User.findById(userToId);
+  } catch (error) {
+    return next(
+      new HttpError(
+        "There was an error while trying to find organizer user.",
+        500
+      )
+    );
+  }
+
   const newMeeting = new Meeting({
     status: "pending",
     startDateTs: startDateTs,
@@ -526,7 +549,28 @@ const insertMeetingRequest = async (req, res, next) => {
     );
   }
 
-  res.status(200).json({ meeting: newMeeting.toObject({ getters: true }) });
+  let title = "A recibido una Solicitud de Reunión";
+  let paragraph1 = `${attendeeUser.firstName} ${
+    attendeeUser.lastName
+  } ha solicitado una reunión con usted para el día ${format(
+    parseInt(startDateTs),
+    "dd/MMMM/yyyy"
+  )}.`;
+  let paragraph2 = `Por favor ingrese a la sección de <b>Solicitudes Pendientes</b> de ${process.env.APP_NAME} para confirmarla o declinarla.`;
+  let anchor = `<a href='${process.env.APP_URL}'>${process.env.APP_URL_NAME}</a>`;
+  let emailBody = `<html><body><h3>${title}</h3><p><span>${paragraph1}</span></p><p><span>${paragraph2}</span></p><p>${anchor}</p></body></html>`;
+
+  let wasEmailSent = await sendEmail(
+    process.env.FROM_EMAIL,
+    organizerUser.email,
+    title,
+    emailBody
+  );
+
+  res.status(200).json({
+    meeting: newMeeting.toObject({ getters: true }),
+    emailSent: wasEmailSent,
+  });
 };
 
 const getUpcomingConfirmedMeetings = async (req, res, next) => {
@@ -708,6 +752,33 @@ const declineMeeting = async (req, res, next) => {
     return next(
       new HttpError("There was an error while trying to confirm meeting.", 500)
     );
+  }
+};
+
+const sendEmail = async (fromMail, toMail, subject, bodyInHtml) => {
+  let transporter = nodemailer.createTransport({
+    host: process.env.SMTP_Host,
+    port: process.env.SMTP_Port,
+    secure: process.env.SMTP_IsSecure,
+    auth: {
+      user: process.env.SMTP_Username,
+      pass: process.env.SMTP_Password,
+    },
+  });
+
+  try {
+    let info = await transporter.sendMail({
+      from: fromMail,
+      to: toMail,
+      subject: subject,
+      html: bodyInHtml,
+    });
+    if (info.messageId !== "") {
+      return true;
+    }
+  } catch (error) {
+    console.log("Error sending email: ", error);
+    return false;
   }
 };
 
