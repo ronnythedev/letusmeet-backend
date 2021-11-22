@@ -1,3 +1,7 @@
+## 👉 Example
+    An example of this app is running here: https://www.myplanapp.info. (for now only in Spanish, multi-language version upcoming)
+
+
 ## 👉 Get Started
 
 0.  Download and install [Nodejs](https://nodejs.org/en/download/) in your computer (LTS version).
