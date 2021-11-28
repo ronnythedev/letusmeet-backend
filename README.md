@@ -1,5 +1,5 @@
 ## 👉 Example
-    An example of this app is running here: https://www.myplanapp.info. (for now only in Spanish, multi-language version upcoming)
+An example of this app is running here: https://www.myplanapp.info. (for now only in Spanish, multi-language version upcoming)
 
 
 ## 👉 Get Started
