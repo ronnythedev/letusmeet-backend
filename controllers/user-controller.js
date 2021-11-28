@@ -8,11 +8,12 @@ const nodemailer = require("nodemailer");
 // models
 const User = require("../models/user");
 const UserSchedule = require("../models/user-schedule");
+const UserInteraction = require("../models/user-interaction");
 const Meeting = require("../models/meeting");
 const TimeZone = require("../models/timeZone");
 const HttpError = require("../models/http-error");
 
-const { startOfWeek, format } = require("date-fns");
+const { startOfWeek, format, addHours } = require("date-fns");
 
 const signIn = async (req, res, next) => {
   const errors = validationResult(req);
@@ -181,12 +182,39 @@ const signUp = async (req, res, next) => {
     return next(new HttpError("Error while signing up, please try again", 500));
   }
 
+  let emailConfirmationToken = shortid.generate();
+  const newUserInteraction = new UserInteraction({
+    userId: newUser.id,
+    type: 1,
+    token: emailConfirmationToken,
+    expirationDateTs: addHours(new Date(), 24).getTime(),
+  });
+
+  try {
+    await newUserInteraction.save();
+  } catch (error) {
+    return next(
+      new HttpError("Error while creating email confirmation token", 500)
+    );
+  }
+
+  let title = `${process.env.APP_NAME} - Confirmación de Email`;
+  let paragraph1 = `Hola ${newUser.firstName},`;
+  let confirmationLink = `<a href='${process.env.APP_URL}/email-confirm/${emailConfirmationToken}'>${process.env.APP_URL}/email-confirm/${emailConfirmationToken}</a>`;
+  let paragraph2 = `Para confirmar tu email por favor haz clic en el siguiente enlance: ${confirmationLink}`;
+  let paragraph3 = "Este enlance tiene una validez de 24 horas.";
+  let anchor = `<a href='${process.env.APP_URL}'>${process.env.APP_URL_NAME}</a>`;
+  let emailBody = `<html><body><h3>${title}</h3><p><span>${paragraph1}</span></p><p><span>${paragraph2}</span></p><p><span>${paragraph3}</span></p><p>${anchor}</p></body></html>`;
+
+  let wasEmailSent = await sendEmail(newUser.email, title, emailBody);
+
   res.status(201).json({
     user: {
       id: newUser.id,
       email: newUser.email,
       token: token,
     },
+    emailSent: wasEmailSent,
   });
 };
 
@@ -881,6 +909,57 @@ const cancelMeeting = async (req, res, next) => {
   }
 };
 
+const resendConfirmationEmail = async (req, res, next) => {
+  const userId = req.userData.uid;
+
+  let foundUser;
+  try {
+    foundUser = await User.findById(userId);
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while trying to find a user.", 500)
+    );
+  }
+
+  if (!foundUser) {
+    return next(new HttpError("Could not find a user with the given id.", 404));
+  }
+
+  let emailConfirmationToken = shortid.generate();
+  const newUserInteraction = new UserInteraction({
+    userId: foundUser.id,
+    type: 1,
+    token: emailConfirmationToken,
+    expirationDateTs: addHours(new Date(), 24).getTime(),
+  });
+
+  try {
+    await newUserInteraction.save();
+  } catch (error) {
+    return next(
+      new HttpError("Error while creating email confirmation token", 500)
+    );
+  }
+
+  let title = `${process.env.APP_NAME} - Confirmación de Email`;
+  let paragraph1 = `Hola ${foundUser.firstName},`;
+  let confirmationLink = `<a href='${process.env.APP_URL}/email-confirm/${emailConfirmationToken}'>${process.env.APP_URL}/email-confirm/${emailConfirmationToken}</a>`;
+  let paragraph2 = `Para confirmar tu email por favor haz clic en el siguiente enlance: ${confirmationLink}`;
+  let paragraph3 = "Este enlance tiene una validez de 24 horas.";
+  let anchor = `<a href='${process.env.APP_URL}'>${process.env.APP_URL_NAME}</a>`;
+  let emailBody = `<html><body><h3>${title}</h3><p><span>${paragraph1}</span></p><p><span>${paragraph2}</span></p><p><span>${paragraph3}</span></p><p>${anchor}</p></body></html>`;
+
+  let wasEmailSent = await sendEmail(foundUser.email, title, emailBody);
+
+  if (wasEmailSent) {
+    res.status(201).json({
+      emailSent: wasEmailSent,
+    });
+  } else {
+    return next(new HttpError("Error sending confirmation email", 500));
+  }
+};
+
 const sendEmail = async (toMail, subject, bodyInHtml) => {
   let fromEmail;
 
@@ -952,3 +1031,4 @@ exports.validateMeetingRoomPin = validateMeetingRoomPin;
 exports.confirmMeeting = confirmMeeting;
 exports.declineMeeting = declineMeeting;
 exports.cancelMeeting = cancelMeeting;
+exports.resendConfirmationEmail = resendConfirmationEmail;

@@ -59,6 +59,11 @@ router.get(
   userController.validateMeetingRoomPin
 );
 
+router.post(
+  "/resend-confirmation-email",
+  userController.resendConfirmationEmail
+);
+
 router.get("/all", userController.getAllUsers); // this route might also need some sort of special role
 
 router.patch("/updatelink", userController.updateUniqueLinkId);
@@ -66,6 +71,8 @@ router.patch("/updatelink", userController.updateUniqueLinkId);
 router.patch("/:uid", userController.updateUser);
 
 router.get("/:uid", userController.getUserById);
+
+router.get("/user", userController.getAuthUser);
 
 router.get("/", userController.getAuthUser);
 
