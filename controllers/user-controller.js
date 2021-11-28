@@ -909,6 +909,7 @@ const cancelMeeting = async (req, res, next) => {
   }
 };
 
+// METHODS RELATED TO USER INTERACTION: EMAIL CONFIRMATION, PASSWORD RESET...
 const resendConfirmationEmail = async (req, res, next) => {
   const userId = req.userData.uid;
 
@@ -957,6 +958,55 @@ const resendConfirmationEmail = async (req, res, next) => {
     });
   } else {
     return next(new HttpError("Error sending confirmation email", 500));
+  }
+};
+
+const confirmEmail = async (req, res, next) => {
+  const { token } = req.params;
+
+  let foundInteraction;
+  try {
+    foundInteraction = await UserInteraction.findOne({ token: token });
+  } catch (error) {
+    return next(
+      new HttpError("Could not find information with the given token.", 404)
+    );
+  }
+
+  if (
+    foundInteraction === undefined ||
+    foundInteraction === null ||
+    foundInteraction.length <= 0
+  ) {
+    return next(
+      new HttpError("Could not find information with the given token.", 404)
+    );
+  }
+
+  if (foundInteraction.expirationDateTs < new Date().getTime()) {
+    return next(new HttpError("Token has expired.", 410));
+  }
+
+  let foundUser;
+  try {
+    foundUser = await User.findById(foundInteraction.userId);
+  } catch (error) {
+    return next(new HttpError("Could not find associated user.", 500));
+  }
+
+  if (foundUser === undefined || foundUser === null || foundUser.length <= 0) {
+    return next(new HttpError("Could not find associated user.", 500));
+  }
+
+  try {
+    const filter = { _id: foundUser.id };
+    const update = { isEmailConfirmed: true };
+    let updatedUser = await User.findOneAndUpdate(filter, update, {
+      returnOriginal: false,
+    });
+    res.status(200).json({ emailConfirmed: true });
+  } catch (error) {
+    return next(new HttpError("Could not confirm email.", 500));
   }
 };
 
@@ -1032,3 +1082,4 @@ exports.confirmMeeting = confirmMeeting;
 exports.declineMeeting = declineMeeting;
 exports.cancelMeeting = cancelMeeting;
 exports.resendConfirmationEmail = resendConfirmationEmail;
+exports.confirmEmail = confirmEmail;

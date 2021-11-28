@@ -30,6 +30,8 @@ router.post(
 
 router.get("/link/:lid/:fromDateTs", userController.getUserByLinkId);
 
+router.post("/email-confirm/:token", userController.confirmEmail);
+
 //*****
 //*****
 // ALL ROUTES BELOW THIS MIDDLEWARE WILL NEED AUTHENTICATION
