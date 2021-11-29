@@ -966,7 +966,7 @@ const confirmEmail = async (req, res, next) => {
 
   let foundInteraction;
   try {
-    foundInteraction = await UserInteraction.findOne({ token: token });
+    foundInteraction = await UserInteraction.findOne({ token: token, type: 1 });
   } catch (error) {
     return next(
       new HttpError("Could not find information with the given token.", 404)
@@ -1007,6 +1007,122 @@ const confirmEmail = async (req, res, next) => {
     res.status(200).json({ emailConfirmed: true });
   } catch (error) {
     return next(new HttpError("Could not confirm email.", 500));
+  }
+};
+
+const sendPasswordResetEmail = async (req, res, next) => {
+  const { email } = req.params;
+
+  let foundUser;
+  try {
+    foundUser = await User.findOne({ email: email });
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while trying to find a user.", 500)
+    );
+  }
+
+  if (!foundUser) {
+    return next(
+      new HttpError("Could not find a user with the given email.", 404)
+    );
+  }
+
+  let passwordResetToken = shortid.generate();
+  const newUserInteraction = new UserInteraction({
+    userId: foundUser.id,
+    type: 2,
+    token: passwordResetToken,
+    expirationDateTs: addHours(new Date(), 24).getTime(),
+  });
+
+  try {
+    await newUserInteraction.save();
+  } catch (error) {
+    return next(
+      new HttpError("Error while creating password reset token", 500)
+    );
+  }
+
+  let title = `${process.env.APP_NAME} - Restablecer Contraseña`;
+  let paragraph1 = `Hola ${foundUser.firstName},`;
+  let passwordResetLink = `<a href='${process.env.APP_URL}/auth/changepass?token=${passwordResetToken}'>${process.env.APP_URL}/auth/changepass?token=${passwordResetToken}</a>`;
+  let paragraph2 = `Para restablecer tu contraseña por favor haz clic en el siguiente enlance: ${passwordResetLink}. Este enlance tiene una validez de 24 horas.`;
+  let paragraph3 =
+    "Si no solicitaste restablecer tu contraseña, puedes ignorar este mensaje.";
+  let anchor = `<a href='${process.env.APP_URL}'>${process.env.APP_URL_NAME}</a>`;
+  let emailBody = `<html><body><h3>${title}</h3><p><span>${paragraph1}</span></p><p><span>${paragraph2}</span></p><p><span>${paragraph3}</span></p><p>${anchor}</p></body></html>`;
+
+  let wasEmailSent = await sendEmail(foundUser.email, title, emailBody);
+
+  if (wasEmailSent) {
+    res.status(200).json({
+      emailSent: wasEmailSent,
+    });
+  } else {
+    return next(new HttpError("Error sending confirmation email", 500));
+  }
+};
+
+const confirmPasswordReset = async (req, res, next) => {
+  const { token, newPassword } = req.params;
+
+  if (token === undefined || newPassword === undefined) {
+    return next(new HttpError("Bad request.", 400));
+  }
+
+  let foundInteraction;
+  try {
+    foundInteraction = await UserInteraction.findOne({ token: token, type: 2 });
+  } catch (error) {
+    return next(
+      new HttpError("Could not find information with the given token.", 404)
+    );
+  }
+
+  if (
+    foundInteraction === undefined ||
+    foundInteraction === null ||
+    foundInteraction.length <= 0
+  ) {
+    return next(
+      new HttpError("Could not find information with the given token.", 404)
+    );
+  }
+
+  if (foundInteraction.expirationDateTs < new Date().getTime()) {
+    return next(new HttpError("Token has expired.", 410));
+  }
+
+  let foundUser;
+  try {
+    foundUser = await User.findById(foundInteraction.userId);
+  } catch (error) {
+    return next(new HttpError("Could not find associated user.", 404));
+  }
+
+  if (foundUser === undefined || foundUser === null || foundUser.length <= 0) {
+    return next(new HttpError("Could not find associated user.", 404));
+  }
+
+  let passwordHashed;
+  try {
+    passwordHashed = await bcrypt.hash(newPassword, 12);
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while hashing password.", 500)
+    );
+  }
+
+  try {
+    const filter = { _id: foundUser.id };
+    const update = { passwordHashed: passwordHashed };
+    let updatedUser = await User.findOneAndUpdate(filter, update, {
+      returnOriginal: false,
+    });
+    res.status(200).json({ userUpdatedId: foundUser._id });
+  } catch (error) {
+    return next(new HttpError("Could not update password.", 500));
   }
 };
 
@@ -1083,3 +1199,5 @@ exports.declineMeeting = declineMeeting;
 exports.cancelMeeting = cancelMeeting;
 exports.resendConfirmationEmail = resendConfirmationEmail;
 exports.confirmEmail = confirmEmail;
+exports.sendPasswordResetEmail = sendPasswordResetEmail;
+exports.confirmPasswordReset = confirmPasswordReset;

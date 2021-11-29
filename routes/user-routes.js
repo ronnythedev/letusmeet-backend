@@ -32,6 +32,16 @@ router.get("/link/:lid/:fromDateTs", userController.getUserByLinkId);
 
 router.post("/email-confirm/:token", userController.confirmEmail);
 
+router.post(
+  "/password-reset-email/:email",
+  userController.sendPasswordResetEmail
+);
+
+router.post(
+  "/password-reset/:token/:newPassword",
+  userController.confirmPasswordReset
+);
+
 //*****
 //*****
 // ALL ROUTES BELOW THIS MIDDLEWARE WILL NEED AUTHENTICATION
