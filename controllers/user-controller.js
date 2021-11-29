@@ -1126,6 +1126,44 @@ const confirmPasswordReset = async (req, res, next) => {
   }
 };
 
+const passwordUpdate = async (req, res, next) => {
+  const userId = req.userData.uid;
+  const { newPassword } = req.params;
+
+  let foundUser;
+  try {
+    foundUser = await User.findById(userId);
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while trying to find a user.", 500)
+    );
+  }
+
+  if (!foundUser) {
+    return next(new HttpError("Could not find a user with the given id.", 404));
+  }
+
+  let passwordHashed;
+  try {
+    passwordHashed = await bcrypt.hash(newPassword, 12);
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while hashing password.", 500)
+    );
+  }
+
+  try {
+    const filter = { _id: foundUser.id };
+    const update = { passwordHashed: passwordHashed };
+    let updatedUser = await User.findOneAndUpdate(filter, update, {
+      returnOriginal: false,
+    });
+    res.status(200).json({ userUpdatedId: foundUser._id });
+  } catch (error) {
+    return next(new HttpError("Could not update password.", 500));
+  }
+};
+
 const sendEmail = async (toMail, subject, bodyInHtml) => {
   let fromEmail;
 
@@ -1201,3 +1239,4 @@ exports.resendConfirmationEmail = resendConfirmationEmail;
 exports.confirmEmail = confirmEmail;
 exports.sendPasswordResetEmail = sendPasswordResetEmail;
 exports.confirmPasswordReset = confirmPasswordReset;
+exports.passwordUpdate = passwordUpdate;

@@ -76,6 +76,8 @@ router.post(
   userController.resendConfirmationEmail
 );
 
+router.post("/password-reset/:newPassword", userController.passwordUpdate);
+
 router.get("/all", userController.getAllUsers); // this route might also need some sort of special role
 
 router.patch("/updatelink", userController.updateUniqueLinkId);
