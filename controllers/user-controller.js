@@ -343,6 +343,85 @@ const updateUniqueLinkId = async (req, res, next) => {
   }
 };
 
+const passwordUpdate = async (req, res, next) => {
+  const userId = req.userData.uid;
+  const { newPassword } = req.params;
+
+  let foundUser;
+  try {
+    foundUser = await User.findById(userId);
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while trying to find a user.", 500)
+    );
+  }
+
+  if (!foundUser) {
+    return next(new HttpError("Could not find a user with the given id.", 404));
+  }
+
+  let passwordHashed;
+  try {
+    passwordHashed = await bcrypt.hash(newPassword, 12);
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while hashing password.", 500)
+    );
+  }
+
+  try {
+    const filter = { _id: foundUser.id };
+    const update = { passwordHashed: passwordHashed };
+    let updatedUser = await User.findOneAndUpdate(filter, update, {
+      returnOriginal: false,
+    });
+    res.status(200).json({ userUpdatedId: foundUser._id });
+  } catch (error) {
+    return next(new HttpError("Could not update password.", 500));
+  }
+};
+
+const updateEssentialInfo = async (req, res, next) => {
+  const { firstName, lastName } = req.body;
+  const userId = req.userData.uid;
+
+  let foundUser;
+  try {
+    foundUser = await User.findById(userId);
+  } catch (error) {
+    return next(
+      new HttpError("There was an error while trying to find a user.", 500)
+    );
+  }
+
+  if (!foundUser) {
+    return next(new HttpError("Could not find a user with the given id.", 404));
+  }
+
+  try {
+    const filter = { _id: foundUser.id };
+    const update = { firstName: firstName, lastName: lastName };
+    let updatedUser = await User.findOneAndUpdate(filter, update, {
+      returnOriginal: false,
+    });
+
+    res.status(200).json({
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        preferredLanguageCode: updatedUser.preferredLanguageCode,
+        isEmailConfirmed: updatedUser.isEmailConfirmed,
+        timeZoneId: updatedUser.timeZoneId,
+        uniqueLinkId: updatedUser.uniqueLinkId,
+      },
+    });
+  } catch (error) {
+    return next(new HttpError("Could not update password.", 500));
+  }
+};
+
 // METHODS RELEATED TO USER' SCHEDULE
 const getAvailableDates = async (req, res, next) => {
   const userId = req.userData.uid;
@@ -1126,44 +1205,6 @@ const confirmPasswordReset = async (req, res, next) => {
   }
 };
 
-const passwordUpdate = async (req, res, next) => {
-  const userId = req.userData.uid;
-  const { newPassword } = req.params;
-
-  let foundUser;
-  try {
-    foundUser = await User.findById(userId);
-  } catch (error) {
-    return next(
-      new HttpError("There was an error while trying to find a user.", 500)
-    );
-  }
-
-  if (!foundUser) {
-    return next(new HttpError("Could not find a user with the given id.", 404));
-  }
-
-  let passwordHashed;
-  try {
-    passwordHashed = await bcrypt.hash(newPassword, 12);
-  } catch (error) {
-    return next(
-      new HttpError("There was an error while hashing password.", 500)
-    );
-  }
-
-  try {
-    const filter = { _id: foundUser.id };
-    const update = { passwordHashed: passwordHashed };
-    let updatedUser = await User.findOneAndUpdate(filter, update, {
-      returnOriginal: false,
-    });
-    res.status(200).json({ userUpdatedId: foundUser._id });
-  } catch (error) {
-    return next(new HttpError("Could not update password.", 500));
-  }
-};
-
 const sendEmail = async (toMail, subject, bodyInHtml) => {
   let fromEmail;
 
@@ -1206,28 +1247,17 @@ const sendEmail = async (toMail, subject, bodyInHtml) => {
   }
 };
 
-// NOT  IMPLEMENTED YET
-const deleteUser = (req, res, next) => {};
-
-const updateUser = (req, res, next) => {
-  const { name, lastName } = req.body;
-
-  // TODO: perform the update
-
-  res.status(200).json({ user: req.body });
-};
-
 exports.signIn = signIn;
+exports.signUp = signUp;
 exports.getAllUsers = getAllUsers;
 exports.getUserById = getUserById;
 exports.getAuthUser = getAuthUser;
-exports.getUserByLinkId = getUserByLinkId;
-exports.signUp = signUp;
-exports.updateUser = updateUser;
 exports.updateUniqueLinkId = updateUniqueLinkId;
-exports.deleteUser = deleteUser;
+exports.passwordUpdate = passwordUpdate;
+exports.updateEssentialInfo = updateEssentialInfo;
 exports.getAvailableDates = getAvailableDates;
 exports.updateAvailableDatesByUser = updateAvailableDatesByUser;
+exports.getUserByLinkId = getUserByLinkId;
 exports.insertMeetingRequest = insertMeetingRequest;
 exports.getUpcomingConfirmedMeetings = getUpcomingConfirmedMeetings;
 exports.getUpcomingPendingMeetings = getUpcomingPendingMeetings;
@@ -1239,4 +1269,3 @@ exports.resendConfirmationEmail = resendConfirmationEmail;
 exports.confirmEmail = confirmEmail;
 exports.sendPasswordResetEmail = sendPasswordResetEmail;
 exports.confirmPasswordReset = confirmPasswordReset;
-exports.passwordUpdate = passwordUpdate;

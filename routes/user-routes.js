@@ -82,7 +82,7 @@ router.get("/all", userController.getAllUsers); // this route might also need so
 
 router.patch("/updatelink", userController.updateUniqueLinkId);
 
-router.patch("/:uid", userController.updateUser);
+router.patch("/update-essential-info", userController.updateEssentialInfo);
 
 router.get("/:uid", userController.getUserById);
 
